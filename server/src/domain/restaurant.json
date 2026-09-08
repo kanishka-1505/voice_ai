@@ -1,0 +1,9 @@
+{
+  "restaurantName": "Bella Vista Italian Kitchen",
+  "openingHour": "17:00",
+  "closingHour": "23:00",
+  "minPartySize": 1,
+  "maxPartySize": 12,
+  "seatingOptions": ["indoor", "patio"],
+  "specialties": ["Wood-fired Truffle Pizza", "Handmade Tagliatelle Bolognese", "Classic Tiramisu"]
+}
