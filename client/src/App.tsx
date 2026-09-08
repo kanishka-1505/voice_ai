@@ -6,7 +6,16 @@ import { useSileroVad } from './vad/useSileroVad';
 import { DebugOverlay } from './components/DebugOverlay';
 import { TranscriptView } from './components/TranscriptView';
 import { BookingSlotsStrip } from './components/BookingSlotsStrip';
-import { Mic, MicOff, Volume2, RotateCcw, Flame, MessageSquare, Sparkles, UserCheck, RefreshCw, Clock, Zap } from 'lucide-react';
+import {
+  Mic,
+  MicOff,
+  Volume2,
+  RotateCcw,
+  Sparkles,
+  Cpu,
+  UtensilsCrossed,
+  WifiOff,
+} from 'lucide-react';
 
 const WS_URL = 'ws://localhost:8080';
 
@@ -62,7 +71,7 @@ export const App: React.FC = () => {
   const [bytesSent, setBytesSent] = useState(0);
   const [activeNodesCount, setActiveNodesCount] = useState(0);
   const [isAssistantActive, setIsAssistantActive] = useState(false);
-  const [isAutoTesting, setIsAutoTesting] = useState(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
 
   useEffect(() => {
     const unsubState = queue.subscribeState((isPlaying, count) => {
@@ -285,11 +294,7 @@ export const App: React.FC = () => {
     });
   };
 
-  // =================================================================
-  // Phase 3 Proof-Plan Interactive Test Suite (6 Canonical Cases)
-  // =================================================================
-
-  // Case 1: Clean Turn (ASR -> Short Endpointing -> LLM -> Streaming TTS Complete)
+  // Phase 3 Canonical Test Handlers
   const runCase1CleanTurn = () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     addLog('🧪 Proof Case 1: Clean Complete Turn ("Book a table for 2 tonight at 7 PM")', 'state');
@@ -300,20 +305,17 @@ export const App: React.FC = () => {
     }));
   };
 
-  // Case 2: Mid-Utterance Interrupt (Barge-In mid-TTS audio stream)
   const runCase2MidTTSBargeIn = async () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     addLog('🧪 Proof Case 2: Mid-Utterance Barge-In — Starting turn, then interrupting mid-TTS...', 'barge_in');
     runCase1CleanTurn();
 
-    // Wait until LLM finishes and TTS audio chunks are actively playing (~2200ms)
     await new Promise((res) => setTimeout(res, 2200));
     const onset = performance.now();
     onSpeechStart(onset);
     addLog('⚡ Interrupted active TTS playback! Audio hard-stopped <150ms & 3-way abort fired.', 'barge_in');
   };
 
-  // Case 3: Trailing-Off Endpointing ("...table for two tonight... um...")
   const runCase3TrailingOff = () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     addLog('🧪 Proof Case 3: Trailing-Off Endpointing ("Table for two tonight... um...")', 'endpointing');
@@ -324,7 +326,6 @@ export const App: React.FC = () => {
     }));
   };
 
-  // Case 4: Slot Correction ("Actually make that 7 people")
   const runCase4SlotCorrection = () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     addLog('🧪 Proof Case 4: Slot Correction ("Actually make that seven people")', 'transcript');
@@ -335,57 +336,33 @@ export const App: React.FC = () => {
     }));
   };
 
-  // Case 5: Rapid Double Interrupt (2 interrupts within 350ms)
   const runCase5RapidDoubleInterrupt = async () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     addLog('🧪 Proof Case 5: Rapid Double Interrupt (Firing 2 interrupts 300ms apart)...', 'barge_in');
-    
-    // Start initial turn
     runCase1CleanTurn();
     await new Promise((res) => setTimeout(res, 1200));
 
-    // Interrupt #1
     addLog('⚡ Firing Barge-In #1...', 'barge_in');
     onSpeechStart(performance.now());
     await new Promise((res) => setTimeout(res, 300));
 
-    // Interrupt #2
     addLog('⚡ Firing Barge-In #2...', 'barge_in');
     onSpeechStart(performance.now());
-    addLog('✓ Double interrupt finished: Verified strict monotonic turn increment and clean queue.', 'barge_in');
+    addLog('✓ Double interrupt finished: Strict monotonic turn increment.', 'barge_in');
   };
 
-  // Case 6: Tail-End Interrupt (Barge-in on final TTS chunk)
   const runCase6TailEndInterrupt = async () => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     addLog('🧪 Proof Case 6: Tail-End Interrupt — Interrupting right at final audio chunk...', 'barge_in');
     runCase1CleanTurn();
 
-    // Wait until near end of TTS playback (~3300ms)
     await new Promise((res) => setTimeout(res, 3300));
     const onset = performance.now();
     onSpeechStart(onset);
-    addLog('⚡ Tail-end barge-in fired! Verified zero race conditions or orphaned nodes.', 'barge_in');
-  };
-
-  const testProvideName = () => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-    addLog('Testing Name Slot: "My name is Alex Smith"', 'transcript');
-    wsRef.current.send(JSON.stringify({
-      type: 'simulate_speech',
-      words: ['My', 'name', 'is', 'Alex', 'Smith'],
-      trailingOff: false,
-    }));
-  };
-
-  const resetBookingSlots = () => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'reset_booking' }));
-    }
+    addLog('⚡ Tail-end barge-in fired! Verified zero race conditions.', 'barge_in');
   };
 
   const runRapidInterruptTest = async () => {
-    setIsAutoTesting(true);
     addLog('🧪 Starting 5x Rapid Barge-In Stress Test...', 'barge_in');
 
     const latencies: number[] = [];
@@ -411,59 +388,167 @@ export const App: React.FC = () => {
       await new Promise((res) => setTimeout(res, 350));
     }
 
-    setIsAutoTesting(false);
-
     if (latencies.length > 0) {
-      const min = Math.min(...latencies);
-      const max = Math.max(...latencies);
       const avg = latencies.reduce((a, b) => a + b, 0) / latencies.length;
-      addLog(
-        `📊 5x Stress Test Stats: Min = ${min}ms, Max = ${max}ms, Avg = ${avg.toFixed(1)}ms [Runs: ${latencies.join(', ')}ms]`,
-        'barge_in'
-      );
+      addLog(`📊 5x Stress Test Stats: Avg = ${avg.toFixed(1)}ms [Runs: ${latencies.join(', ')}ms]`, 'barge_in');
+    }
+  };
+
+  // Helper for Orb styling based on conversational state
+  const getOrbGradient = () => {
+    switch (state) {
+      case 'SPEAKING':
+        return 'linear-gradient(135deg, #059669 0%, #10b981 100%)';
+      case 'USER_SPEAKING':
+        return 'linear-gradient(135deg, #10b981 0%, #6ee7b7 100%)';
+      case 'THINKING':
+        return 'linear-gradient(135deg, #34d399 0%, #d1fae5 100%)';
+      case 'LISTENING':
+        return 'linear-gradient(135deg, #047857 0%, #34d399 100%)';
+      default:
+        return 'linear-gradient(135deg, #142a1f 0%, #0d1b14 100%)';
+    }
+  };
+
+  const getOrbAura = () => {
+    switch (state) {
+      case 'SPEAKING':
+        return 'rgba(16, 185, 129, 0.4)';
+      case 'USER_SPEAKING':
+        return 'rgba(110, 231, 183, 0.45)';
+      case 'THINKING':
+        return 'rgba(52, 211, 153, 0.35)';
+      case 'LISTENING':
+        return 'rgba(52, 211, 153, 0.25)';
+      default:
+        return 'rgba(52, 211, 153, 0.05)';
+    }
+  };
+
+  const getStateTitle = () => {
+    switch (state) {
+      case 'SPEAKING':
+        return 'Assistant Speaking';
+      case 'USER_SPEAKING':
+        return 'Listening to You';
+      case 'THINKING':
+        return 'Formulating Response...';
+      case 'LISTENING':
+        return 'Ready • Speak Anytime';
+      default:
+        return 'Voice Concierge Ready';
+    }
+  };
+
+  const getStateSubtitle = () => {
+    switch (state) {
+      case 'SPEAKING':
+        return 'Interrupt naturally at any moment — playback stops instantly';
+      case 'USER_SPEAKING':
+        return 'Streaming audio frames with continuous voice activity detection';
+      case 'THINKING':
+        return 'Generating reservation response with live token streaming';
+      case 'LISTENING':
+        return 'Say: "I\'d like a table for 4 tomorrow at 8 PM"';
+      default:
+        return 'Click "Start Assistant" and grant microphone access to begin';
     }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'radial-gradient(ellipse at top, #0f172a 0%, #030712 100%)',
-      padding: '24px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '20px',
-      color: '#f8fafc',
-    }}>
-      {/* Top Header */}
-      <header style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        width: '100%',
+    <div
+      style={{
+        minHeight: '100vh',
+        padding: '24px 20px 40px',
         display: 'flex',
-        justifyContent: 'space-between',
+        flexDirection: 'column',
         alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
-        <div>
-          <h1 style={{
-            fontSize: '24px',
-            fontWeight: 800,
-            background: 'linear-gradient(to right, #38bdf8, #c084fc)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            Voice AI — Real Barge-In Engine
-          </h1>
-          <p style={{ color: '#94a3b8', fontSize: '13px' }}>
-            Phase 3: Streaming TTS, full conversational loop, and sub-150ms 3-way barge-in interruption.
-          </p>
+        gap: '24px',
+      }}
+    >
+      {/* Symmetrical Top Navigation */}
+      <header
+        style={{
+          width: '100%',
+          maxWidth: '1040px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
+        {/* Brand / Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, rgba(110, 231, 183, 0.2), rgba(16, 185, 129, 0.1))',
+              border: '1px solid rgba(110, 231, 183, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#6ee7b7',
+              boxShadow: '0 4px 14px rgba(52, 211, 153, 0.15)',
+            }}
+          >
+            <UtensilsCrossed size={20} />
+          </div>
+          <div>
+            <h1
+              style={{
+                fontSize: '18px',
+                fontWeight: 700,
+                color: '#f0fdf4',
+                letterSpacing: '-0.3px',
+                lineHeight: 1.2,
+              }}
+            >
+              Bella Vista
+            </h1>
+            <p style={{ color: '#7ba691', fontSize: '12px', fontWeight: 500 }}>
+              Voice AI Concierge
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        {/* Center Status Badge */}
+        <div
+          className="glass-pill"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '6px 14px',
+            fontSize: '11px',
+          }}
+        >
+          {wsConnected ? (
+            <>
+              <span
+                style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: '#34d399',
+                  boxShadow: '0 0 10px #34d399',
+                }}
+                className="animate-pulse-subtle"
+              />
+              <span style={{ color: '#a7f3d0' }}>Live • Backend Connected</span>
+            </>
+          ) : (
+            <>
+              <WifiOff size={12} color="#fca5a5" />
+              <span style={{ color: '#fca5a5' }}>Connecting to Server...</span>
+            </>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {!isAssistantActive ? (
             <button
               onClick={startAssistant}
@@ -471,19 +556,19 @@ export const App: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '10px 18px',
-                borderRadius: '8px',
-                background: '#0284c7',
-                color: '#fff',
+                padding: '10px 20px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: '#ffffff',
                 border: 'none',
                 fontWeight: 600,
                 fontSize: '13px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)'
+                boxShadow: '0 4px 18px rgba(16, 185, 129, 0.35)',
               }}
             >
               <Mic size={16} />
-              Start Voice Assistant
+              Start Assistant
             </button>
           ) : (
             <button
@@ -493,13 +578,13 @@ export const App: React.FC = () => {
                 alignItems: 'center',
                 gap: '8px',
                 padding: '10px 18px',
-                borderRadius: '8px',
-                background: '#dc2626',
-                color: '#fff',
-                border: 'none',
+                borderRadius: '12px',
+                background: 'rgba(239, 68, 68, 0.18)',
+                color: '#fca5a5',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
                 fontWeight: 600,
                 fontSize: '13px',
-                cursor: 'pointer'
+                cursor: 'pointer',
               }}
             >
               <MicOff size={16} />
@@ -509,402 +594,240 @@ export const App: React.FC = () => {
 
           <button
             onClick={resetSession}
+            title="Reset Session & Slots"
             style={{
+              padding: '10px',
+              borderRadius: '12px',
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(110, 231, 183, 0.12)',
+              color: '#a7c4b5',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.06)',
-              color: '#94a3b8',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              fontSize: '13px',
-              cursor: 'pointer'
+              justifyContent: 'center',
             }}
           >
-            <RotateCcw size={14} />
-            Reset
+            <RotateCcw size={16} />
+          </button>
+
+          <button
+            onClick={() => setIsDiagnosticsOpen(!isDiagnosticsOpen)}
+            title="Toggle Diagnostics & Tests"
+            style={{
+              padding: '10px',
+              borderRadius: '12px',
+              background: isDiagnosticsOpen ? 'rgba(110, 231, 183, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+              border: isDiagnosticsOpen ? '1px solid rgba(110, 231, 183, 0.35)' : '1px solid rgba(110, 231, 183, 0.12)',
+              color: isDiagnosticsOpen ? '#6ee7b7' : '#a7c4b5',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Cpu size={16} />
           </button>
         </div>
       </header>
 
-      {/* Main Interaction Area */}
-      <main style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        width: '100%',
-        display: 'grid',
-        gridTemplateColumns: 'minmax(300px, 360px) 1fr',
-        gap: '24px',
-        alignItems: 'start'
-      }}>
-        {/* Assistant Orb & Live Controls */}
-        <section style={{
-          background: 'rgba(15, 23, 42, 0.7)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '16px',
-          padding: '24px',
+      {/* Hero Centerpiece: Breathing Voice Orb Stage */}
+      <section
+        className="glass-card"
+        style={{
+          width: '100%',
+          maxWidth: '1040px',
+          padding: '40px 24px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
-        }}>
-          <h2 style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px', color: '#64748b', alignSelf: 'flex-start' }}>
-            Assistant Status
-          </h2>
+          justifyContent: 'center',
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+          background: 'rgba(12, 25, 18, 0.65)',
+        }}
+      >
+        {/* Subtle Ambient Background Light */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '320px',
+            height: '320px',
+            borderRadius: '50%',
+            background: `radial-gradient(circle, ${getOrbAura()} 0%, transparent 70%)`,
+            pointerEvents: 'none',
+            transition: 'all 0.6s ease',
+          }}
+        />
 
-          {/* Glowing Animated Orb */}
-          <div style={{
+        {/* Concentric Voice Orb */}
+        <div
+          style={{
             position: 'relative',
-            width: '120px',
-            height: '120px',
+            width: '150px',
+            height: '150px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '4px 0'
-          }}>
-            <div style={{
-              position: 'absolute',
-              inset: 0,
+            marginBottom: '20px',
+          }}
+        >
+          {/* Animated Ripples when speaking / listening */}
+          {isAssistantActive && (
+            <>
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: '-12px',
+                  borderRadius: '50%',
+                  border: '1px solid rgba(110, 231, 183, 0.25)',
+                  animation: 'ripple 2.5s infinite ease-out',
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: '-26px',
+                  borderRadius: '50%',
+                  border: '1px solid rgba(110, 231, 183, 0.15)',
+                  animation: 'ripple 2.5s infinite ease-out 0.8s',
+                }}
+              />
+            </>
+          )}
+
+          {/* Central Physical Orb */}
+          <div
+            className={isAssistantActive ? 'animate-breath' : ''}
+            style={{
+              width: '94px',
+              height: '94px',
               borderRadius: '50%',
-              background: state === 'SPEAKING'
-                ? 'radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%)'
-                : state === 'USER_SPEAKING'
-                ? 'radial-gradient(circle, rgba(56, 189, 248, 0.4) 0%, transparent 70%)'
-                : state === 'THINKING'
-                ? 'radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, transparent 70%)'
-                : state === 'LISTENING'
-                ? 'radial-gradient(circle, rgba(16, 185, 129, 0.4) 0%, transparent 70%)'
-                : 'radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, transparent 70%)',
-              animation: isAssistantActive ? 'pulse 2s infinite' : 'none'
-            }} />
-            <div style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '50%',
-              background: state === 'SPEAKING'
-                ? 'linear-gradient(135deg, #a855f7, #6366f1)'
-                : state === 'USER_SPEAKING'
-                ? 'linear-gradient(135deg, #0ea5e9, #38bdf8)'
-                : state === 'THINKING'
-                ? 'linear-gradient(135deg, #f59e0b, #d97706)'
-                : state === 'LISTENING'
-                ? 'linear-gradient(135deg, #10b981, #06b6d4)'
-                : 'linear-gradient(135deg, #334155, #1e293b)',
-              boxShadow: state === 'SPEAKING'
-                ? '0 0 30px rgba(168, 85, 247, 0.5)'
-                : state === 'USER_SPEAKING'
-                ? '0 0 30px rgba(14, 165, 233, 0.5)'
-                : state === 'THINKING'
-                ? '0 0 30px rgba(245, 158, 11, 0.5)'
-                : state === 'LISTENING'
-                ? '0 0 30px rgba(16, 185, 129, 0.5)'
-                : 'none',
+              background: getOrbGradient(),
+              boxShadow: `0 0 40px ${getOrbAura()}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
-              transition: 'all 0.3s ease'
-            }}>
-              {state === 'SPEAKING' ? <Volume2 size={30} /> : state === 'THINKING' ? <Sparkles size={30} /> : <Mic size={30} />}
-            </div>
+              color: '#ffffff',
+              transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+              cursor: 'pointer',
+            }}
+            onClick={isAssistantActive ? stopAssistant : startAssistant}
+          >
+            {state === 'SPEAKING' ? (
+              <Volume2 size={36} color="#f0fdf4" />
+            ) : state === 'THINKING' ? (
+              <Sparkles size={34} color="#f0fdf4" className="animate-pulse-subtle" />
+            ) : (
+              <Mic size={34} color="#f0fdf4" />
+            )}
           </div>
-
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '17px', fontWeight: 700 }}>
-              {state === 'SPEAKING'
-                ? 'Assistant Response'
-                : state === 'USER_SPEAKING'
-                ? 'Transcribing Speech...'
-                : state === 'THINKING'
-                ? 'Streaming LLM Tokens...'
-                : state === 'LISTENING'
-                ? 'Listening to You'
-                : 'System Idle'}
-            </div>
-            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
-              {state === 'THINKING'
-                ? 'Tokens streaming live — interrupt to test AbortController'
-                : state === 'LISTENING'
-                ? 'Ready to take reservation slots'
-                : 'Click "Start Voice Assistant" to begin'}
-            </div>
-          </div>
-
-          {/* Phase 3 Proof Suite (6 Canonical Cases) */}
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Phase 3 Proof Suite (6 Cases)
-              </span>
-              <span style={{ fontSize: '10px', color: '#64748b' }}>Live E2E</span>
-            </div>
-
-            <button
-              onClick={runCase1CleanTurn}
-              disabled={!wsConnected}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                background: 'rgba(56, 189, 248, 0.12)',
-                color: '#38bdf8',
-                border: '1px solid rgba(56, 189, 248, 0.35)',
-                fontWeight: 600,
-                fontSize: '11px',
-                cursor: wsConnected ? 'pointer' : 'not-allowed',
-                textAlign: 'left'
-              }}
-            >
-              <MessageSquare size={14} style={{ flexShrink: 0 }} />
-              <div>
-                <div>1. Clean Turn (Short ➔ LLM ➔ TTS)</div>
-                <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 400 }}>Round-trip to full playback completion</div>
-              </div>
-            </button>
-
-            <button
-              onClick={runCase2MidTTSBargeIn}
-              disabled={!wsConnected}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                background: 'rgba(239, 68, 68, 0.15)',
-                color: '#f87171',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                fontWeight: 600,
-                fontSize: '11px',
-                cursor: wsConnected ? 'pointer' : 'not-allowed',
-                textAlign: 'left'
-              }}
-            >
-              <Flame size={14} style={{ flexShrink: 0 }} />
-              <div>
-                <div>2. Barge-In Mid-TTS (Hard-Stop)</div>
-                <div style={{ fontSize: '9px', color: '#fca5a5', fontWeight: 400 }}>&lt;150ms cut, 3-way abort, frozen chunks</div>
-              </div>
-            </button>
-
-            <button
-              onClick={runCase3TrailingOff}
-              disabled={!wsConnected}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                background: 'rgba(245, 158, 11, 0.12)',
-                color: '#fbbf24',
-                border: '1px solid rgba(245, 158, 11, 0.35)',
-                fontWeight: 600,
-                fontSize: '11px',
-                cursor: wsConnected ? 'pointer' : 'not-allowed',
-                textAlign: 'left'
-              }}
-            >
-              <Clock size={14} style={{ flexShrink: 0 }} />
-              <div>
-                <div>3. Trailing Off ("...um...")</div>
-                <div style={{ fontSize: '9px', color: '#fde68a', fontWeight: 400 }}>Adaptive Long Window (1800ms) prevents cut-off</div>
-              </div>
-            </button>
-
-            <button
-              onClick={runCase4SlotCorrection}
-              disabled={!wsConnected}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                background: 'rgba(168, 85, 247, 0.12)',
-                color: '#c084fc',
-                border: '1px solid rgba(168, 85, 247, 0.35)',
-                fontWeight: 600,
-                fontSize: '11px',
-                cursor: wsConnected ? 'pointer' : 'not-allowed',
-                textAlign: 'left'
-              }}
-            >
-              <RefreshCw size={14} style={{ flexShrink: 0 }} />
-              <div>
-                <div>4. Slot Correction ("Make that 7")</div>
-                <div style={{ fontSize: '9px', color: '#e9d5ff', fontWeight: 400 }}>Mutates partySize, preserves date & time</div>
-              </div>
-            </button>
-
-            <button
-              onClick={runCase5RapidDoubleInterrupt}
-              disabled={!wsConnected}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                background: 'rgba(236, 72, 153, 0.12)',
-                color: '#f472b6',
-                border: '1px solid rgba(236, 72, 153, 0.35)',
-                fontWeight: 600,
-                fontSize: '11px',
-                cursor: wsConnected ? 'pointer' : 'not-allowed',
-                textAlign: 'left'
-              }}
-            >
-              <Zap size={14} style={{ flexShrink: 0 }} />
-              <div>
-                <div>5. Rapid Double Interrupt (350ms)</div>
-                <div style={{ fontSize: '9px', color: '#fbcfe8', fontWeight: 400 }}>Monotonic turns N➔N+1➔N+2, zero overlap</div>
-              </div>
-            </button>
-
-            <button
-              onClick={runCase6TailEndInterrupt}
-              disabled={!wsConnected}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                background: 'rgba(16, 185, 129, 0.12)',
-                color: '#34d399',
-                border: '1px solid rgba(16, 185, 129, 0.35)',
-                fontWeight: 600,
-                fontSize: '11px',
-                cursor: wsConnected ? 'pointer' : 'not-allowed',
-                textAlign: 'left'
-              }}
-            >
-              <Sparkles size={14} style={{ flexShrink: 0 }} />
-              <div>
-                <div>6. Tail-End Interrupt (Final Chunk)</div>
-                <div style={{ fontSize: '9px', color: '#a7f3d0', fontWeight: 400 }}>Halts cleanly near finish; no race condition</div>
-              </div>
-            </button>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
-              <button
-                onClick={testProvideName}
-                disabled={!wsConnected}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '4px',
-                  padding: '7px',
-                  borderRadius: '6px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: '#94a3b8',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  fontSize: '11px',
-                  cursor: wsConnected ? 'pointer' : 'not-allowed'
-                }}
-              >
-                <UserCheck size={12} /> Name: Alex
-              </button>
-
-              <button
-                onClick={resetBookingSlots}
-                disabled={!wsConnected}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '4px',
-                  padding: '7px',
-                  borderRadius: '6px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: '#94a3b8',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  fontSize: '11px',
-                  cursor: wsConnected ? 'pointer' : 'not-allowed'
-                }}
-              >
-                Clear Slots
-              </button>
-            </div>
-
-            <button
-              onClick={runRapidInterruptTest}
-              disabled={!isAssistantActive || isAutoTesting}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                padding: '8px',
-                borderRadius: '6px',
-                background: 'rgba(236, 72, 153, 0.15)',
-                color: '#f472b6',
-                border: '1px solid rgba(236, 72, 153, 0.4)',
-                fontWeight: 600,
-                fontSize: '11px',
-                cursor: isAssistantActive && !isAutoTesting ? 'pointer' : 'not-allowed'
-              }}
-            >
-              5x Rapid Barge-In Stress Test
-            </button>
-          </div>
-        </section>
-
-        {/* Center & Right: Booking Slots Strip, Dialogue Transcript & Proof Overlay */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <BookingSlotsStrip
-            slots={slots}
-            isComplete={isBookingComplete}
-            turnId={turnId}
-          />
-
-          <TranscriptView
-            currentPartial={currentPartial}
-            transcripts={transcripts}
-            currentTurnId={turnId}
-            endpointingInfo={endpointingInfo}
-            isUserSpeaking={state === 'USER_SPEAKING'}
-            llmStreamingText={llmStreamingText}
-            isLLMGenerating={llmStatus === 'streaming'}
-          />
-
-          <DebugOverlay
-            state={state}
-            turnId={turnId}
-            lastBargeInLatency={lastBargeInLatency}
-            bargeInHistory={bargeInHistory}
-            staleRejectionsCount={staleRejectionsCount}
-            logs={logs}
-            wsConnected={wsConnected}
-            framesSent={framesSent}
-            bytesSent={bytesSent}
-            activeNodesCount={activeNodesCount}
-            speechProbability={vadState.speechProbability}
-            vadEngine={vadState.engine}
-            endpointingInfo={endpointingInfo}
-            hasDeepgramKey={hasDeepgramKey}
-            hasOpenAIKey={hasOpenAIKey}
-            hasCartesiaKey={hasCartesiaKey}
-            llmStatus={llmStatus}
-            llmTokenCount={llmTokenCount}
-            ttsStatus={ttsStatus}
-            ttsChunksCount={ttsChunksCount}
-          />
         </div>
+
+        {/* Status Typography */}
+        <div style={{ zIndex: 1, maxWidth: '520px' }}>
+          <h2
+            style={{
+              fontSize: '22px',
+              fontWeight: 700,
+              color: '#f0fdf4',
+              letterSpacing: '-0.3px',
+            }}
+          >
+            {getStateTitle()}
+          </h2>
+          <p
+            style={{
+              fontSize: '13px',
+              color: '#7ba691',
+              marginTop: '6px',
+              lineHeight: 1.5,
+            }}
+          >
+            {getStateSubtitle()}
+          </p>
+        </div>
+      </section>
+
+      {/* Symmetrical Dual Information Columns */}
+      <main
+        style={{
+          width: '100%',
+          maxWidth: '1040px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+          gap: '20px',
+          alignItems: 'start',
+        }}
+      >
+        {/* Left Column: Booking Details */}
+        <BookingSlotsStrip
+          slots={slots}
+          isComplete={isBookingComplete}
+          turnId={turnId}
+        />
+
+        {/* Right Column: Live Dialogue Flow */}
+        <TranscriptView
+          currentPartial={currentPartial}
+          transcripts={transcripts}
+          currentTurnId={turnId}
+          endpointingInfo={endpointingInfo}
+          isUserSpeaking={state === 'USER_SPEAKING'}
+          llmStreamingText={llmStreamingText}
+          isLLMGenerating={llmStatus === 'streaming'}
+        />
       </main>
+
+      {/* Collapsible Diagnostics & Testing Tray */}
+      <div style={{ width: '100%', maxWidth: '1040px' }}>
+        <DebugOverlay
+          state={state}
+          turnId={turnId}
+          lastBargeInLatency={lastBargeInLatency}
+          bargeInHistory={bargeInHistory}
+          staleRejectionsCount={staleRejectionsCount}
+          logs={logs}
+          wsConnected={wsConnected}
+          framesSent={framesSent}
+          bytesSent={bytesSent}
+          activeNodesCount={activeNodesCount}
+          speechProbability={vadState.speechProbability}
+          vadEngine={vadState.engine}
+          endpointingInfo={endpointingInfo}
+          hasDeepgramKey={hasDeepgramKey}
+          hasOpenAIKey={hasOpenAIKey}
+          hasCartesiaKey={hasCartesiaKey}
+          llmStatus={llmStatus}
+          llmTokenCount={llmTokenCount}
+          ttsStatus={ttsStatus}
+          ttsChunksCount={ttsChunksCount}
+          isOpen={isDiagnosticsOpen}
+          onToggle={() => setIsDiagnosticsOpen(!isDiagnosticsOpen)}
+          onRunCase1CleanTurn={runCase1CleanTurn}
+          onRunCase2MidTTSBargeIn={runCase2MidTTSBargeIn}
+          onRunCase3TrailingOff={runCase3TrailingOff}
+          onRunCase4SlotCorrection={runCase4SlotCorrection}
+          onRunCase5RapidDoubleInterrupt={runCase5RapidDoubleInterrupt}
+          onRunCase6TailEndInterrupt={runCase6TailEndInterrupt}
+          onRunRapidInterruptTest={runRapidInterruptTest}
+        />
+      </div>
+
+      {/* Minimalist Footer */}
+      <footer
+        style={{
+          fontSize: '11px',
+          color: '#476355',
+          textAlign: 'center',
+          marginTop: '10px',
+        }}
+      >
+        Silero VAD • Deepgram Nova-2 • Groq/OpenAI LLM • Cartesia Sonic TTS • Full Duplex Barge-in
+      </footer>
     </div>
   );
 };

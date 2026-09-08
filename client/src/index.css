@@ -1,10 +1,36 @@
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: dark;
-  color: #f8fafc;
-  background-color: #030712;
+  
+  /* Color Palette - Pastel Greens & Forest Slate */
+  --bg-primary: #060d09;
+  --bg-surface: rgba(14, 28, 20, 0.7);
+  --bg-surface-elevated: rgba(20, 40, 29, 0.85);
+  --bg-card: rgba(18, 35, 26, 0.6);
+  --border-subtle: rgba(110, 231, 183, 0.12);
+  --border-active: rgba(110, 231, 183, 0.35);
+  
+  /* Pastel Greens */
+  --pastel-mint: #6ee7b7;
+  --pastel-sage: #a7f3d0;
+  --pastel-matcha: #d1fae5;
+  --pastel-emerald: #34d399;
+  --pastel-emerald-dark: #059669;
+  
+  /* Accent & Status */
+  --accent-glow: rgba(52, 211, 153, 0.25);
+  --accent-soft: rgba(110, 231, 183, 0.1);
+  --text-primary: #f0fdf4;
+  --text-secondary: #a7c4b5;
+  --text-muted: #5e8271;
+  --text-dim: #3d584b;
+  
+  /* Warm Pastel Highlights */
+  --pastel-amber: #fde68a;
+  --pastel-rose: #fca5a5;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -20,22 +46,103 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background-color: var(--bg-primary);
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(52, 211, 153, 0.12) 0%, transparent 60%),
+    radial-gradient(circle at 10% 30%, rgba(16, 185, 129, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 90% 70%, rgba(110, 231, 183, 0.05) 0%, transparent 50%),
+    linear-gradient(180deg, #070f0b 0%, #040806 100%);
+  color: var(--text-primary);
   display: flex;
   flex-direction: column;
 }
 
-/* Custom scrollbar */
+/* Glassmorphism Card Utility */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(110, 231, 183, 0.22);
+}
+
+.glass-pill {
+  background: rgba(110, 231, 183, 0.08);
+  border: 1px solid rgba(110, 231, 183, 0.2);
+  border-radius: 9999px;
+  color: var(--pastel-mint);
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+/* Animations */
+@keyframes breath {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 35px var(--accent-glow);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 55px rgba(52, 211, 153, 0.4);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes wave-bar {
+  0%, 100% { height: 6px; }
+  50% { height: 26px; }
+}
+
+.animate-breath {
+  animation: breath 3s infinite ease-in-out;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}
+
+/* Custom scrollbar in pastel sage */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: rgba(10, 22, 16, 0.4);
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 3px;
+  background: rgba(110, 231, 183, 0.2);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgba(110, 231, 183, 0.4);
+}
+
+/* Buttons */
+button {
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+button:active {
+  transform: scale(0.98);
 }

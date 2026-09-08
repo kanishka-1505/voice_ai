@@ -1,7 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AssistantState, DebugLogEntry, BargeInRecord } from '../state/useVoiceStateMachine';
 import { EndpointingInfo } from './TranscriptView';
-import { Activity, ShieldAlert, Zap, Clock, Bot, Volume2 } from 'lucide-react';
+import {
+  Activity,
+  Zap,
+  Clock,
+  ChevronUp,
+  Cpu,
+  Flame,
+  MessageSquare,
+  RefreshCw,
+  Sparkles,
+  Terminal,
+  X,
+} from 'lucide-react';
 
 interface DebugOverlayProps {
   state: AssistantState;
@@ -24,6 +36,16 @@ interface DebugOverlayProps {
   llmTokenCount: number;
   ttsStatus: 'idle' | 'streaming' | 'aborted' | 'complete';
   ttsChunksCount: number;
+  isOpen: boolean;
+  onToggle: () => void;
+  // Test suite triggers
+  onRunCase1CleanTurn?: () => void;
+  onRunCase2MidTTSBargeIn?: () => void;
+  onRunCase3TrailingOff?: () => void;
+  onRunCase4SlotCorrection?: () => void;
+  onRunCase5RapidDoubleInterrupt?: () => void;
+  onRunCase6TailEndInterrupt?: () => void;
+  onRunRapidInterruptTest?: () => void;
 }
 
 export const DebugOverlay: React.FC<DebugOverlayProps> = ({
@@ -47,535 +69,490 @@ export const DebugOverlay: React.FC<DebugOverlayProps> = ({
   llmTokenCount,
   ttsStatus,
   ttsChunksCount,
+  isOpen,
+  onToggle,
+  onRunCase1CleanTurn,
+  onRunCase2MidTTSBargeIn,
+  onRunCase3TrailingOff,
+  onRunCase4SlotCorrection,
+  onRunCase5RapidDoubleInterrupt,
+  onRunCase6TailEndInterrupt,
+  onRunRapidInterruptTest,
 }) => {
-  const getLatencyColor = (ms: number | null) => {
-    if (ms === null) return 'text-slate-500';
-    if (ms <= 120) return 'text-emerald-400';
-    if (ms <= 200) return 'text-amber-400';
-    return 'text-rose-400';
-  };
+  const [activeTab, setActiveTab] = useState<'tests' | 'metrics' | 'logs'>('tests');
 
-  return (
-    <aside aria-label="Debug telemetry overlay" style={{
-      background: 'rgba(10, 15, 29, 0.95)',
-      backdropFilter: 'blur(12px)',
-      border: '1px solid rgba(56, 189, 248, 0.2)',
-      borderRadius: '16px',
-      padding: '20px',
-      color: '#e2e8f0',
-      boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.1)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '16px',
-      width: '100%',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      fontFamily: 'monospace'
-    }}>
-      {/* Header Bar: Full Chain Providers */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        paddingBottom: '14px',
-        flexWrap: 'wrap',
-        gap: '10px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            width: '10px',
-            height: '10px',
-            borderRadius: '50%',
-            background: wsConnected ? '#10b981' : '#ef4444',
-            boxShadow: wsConnected ? '0 0 10px #10b981' : '0 0 10px #ef4444'
-          }} />
-          <span style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '1px', color: '#38bdf8' }}>
-            DEBUG OVERLAY v3
-          </span>
-          <span style={{
-            fontSize: '11px',
-            padding: '2px 8px',
-            borderRadius: '999px',
-            background: 'rgba(168, 85, 247, 0.15)',
-            color: '#c084fc',
-            border: '1px solid rgba(168, 85, 247, 0.3)'
-          }}>
-            PHASE 3 FULL LOOP (TTS ACTIVE)
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '11px', color: '#94a3b8' }}>TTS:</span>
-          <span style={{
-            fontSize: '10px',
-            padding: '2px 7px',
-            borderRadius: '5px',
-            background: hasCartesiaKey ? 'rgba(16, 185, 129, 0.15)' : 'rgba(148, 163, 184, 0.15)',
-            color: hasCartesiaKey ? '#34d399' : '#94a3b8',
-            border: '1px solid currentColor'
-          }}>
-            {hasCartesiaKey ? 'CARTESIA' : 'STREAM SYNTH'}
-          </span>
-
-          <span style={{ fontSize: '11px', color: '#94a3b8' }}>LLM:</span>
-          <span style={{
-            fontSize: '10px',
-            padding: '2px 7px',
-            borderRadius: '5px',
-            background: hasOpenAIKey ? 'rgba(16, 185, 129, 0.15)' : 'rgba(148, 163, 184, 0.15)',
-            color: hasOpenAIKey ? '#34d399' : '#94a3b8',
-            border: '1px solid currentColor'
-          }}>
-            {hasOpenAIKey ? 'OPENAI' : 'DIALOG ENGINE'}
-          </span>
-
-          <span style={{ fontSize: '11px', color: '#94a3b8' }}>ASR:</span>
-          <span style={{
-            fontSize: '10px',
-            padding: '2px 7px',
-            borderRadius: '5px',
-            background: hasDeepgramKey ? 'rgba(16, 185, 129, 0.15)' : 'rgba(148, 163, 184, 0.15)',
-            color: hasDeepgramKey ? '#34d399' : '#94a3b8',
-            border: '1px solid currentColor'
-          }}>
-            {hasDeepgramKey ? 'DEEPGRAM' : 'SIMULATOR'}
-          </span>
-
-          <span style={{ fontSize: '11px', color: '#94a3b8' }}>VAD:</span>
-          <span style={{
-            fontSize: '10px',
-            padding: '2px 7px',
-            borderRadius: '5px',
-            background: vadEngine === 'silero' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-            color: vadEngine === 'silero' ? '#34d399' : '#fbbf24',
-            border: '1px solid currentColor'
-          }}>
-            {vadEngine.toUpperCase()}
-          </span>
-        </div>
-      </div>
-
-      {/* Primary Proof Metrics */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '14px'
-      }}>
-        {/* State Machine State */}
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
-          borderRadius: '12px',
-          padding: '14px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
-          <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-            State Machine
-          </div>
-          <div style={{
-            display: 'inline-flex',
+  if (!isOpen) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
+        <button
+          onClick={onToggle}
+          className="glass-pill"
+          style={{
+            display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            fontSize: '18px',
-            fontWeight: 800,
-            padding: '6px 12px',
-            borderRadius: '8px',
-            width: 'fit-content',
-            background: state === 'SPEAKING'
-              ? 'rgba(168, 85, 247, 0.2)'
-              : state === 'USER_SPEAKING'
-              ? 'rgba(14, 165, 233, 0.2)'
-              : state === 'THINKING'
-              ? 'rgba(245, 158, 11, 0.2)'
-              : state === 'LISTENING'
-              ? 'rgba(16, 185, 129, 0.2)'
-              : 'rgba(100, 116, 139, 0.2)',
-            color: state === 'SPEAKING'
-              ? '#c084fc'
-              : state === 'USER_SPEAKING'
-              ? '#38bdf8'
-              : state === 'THINKING'
-              ? '#fbbf24'
-              : state === 'LISTENING'
-              ? '#34d399'
-              : '#94a3b8',
-            border: '1px solid currentColor'
-          }}>
-            <Activity size={18} />
-            {state}
-          </div>
-          <div style={{ fontSize: '10px', color: '#64748b', marginTop: '8px' }}>
-            Active Playback Nodes: <strong style={{ color: activeNodesCount > 0 ? '#38bdf8' : '#94a3b8' }}>{activeNodesCount}</strong>
-          </div>
-        </div>
-
-        {/* Turn ID Monotonic Counter */}
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
-          borderRadius: '12px',
-          padding: '14px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
-          <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-            Current Turn ID
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 900, color: '#38bdf8', textShadow: '0 0 15px rgba(56, 189, 248, 0.4)' }}>
-            #{turnId}
-          </div>
-          <div style={{ fontSize: '10px', color: '#64748b' }}>
-            Invalidates turns &lt; #{turnId}
-          </div>
-        </div>
-
-        {/* VAD Trigger -> Playback Stopped Latency */}
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
-          borderRadius: '12px',
-          padding: '14px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Stop Latency (VAD ➔ Stop)
-            </span>
-            <Zap size={14} color="#f59e0b" />
-          </div>
-          <div style={{
-            fontSize: '32px',
-            fontWeight: 900,
-            color: getLatencyColor(lastBargeInLatency) === 'text-emerald-400' ? '#34d399' : getLatencyColor(lastBargeInLatency) === 'text-amber-400' ? '#fbbf24' : '#64748b'
-          }}>
-            {lastBargeInLatency !== null ? `${lastBargeInLatency} ms` : '—'}
-          </div>
-          <div style={{ fontSize: '10px', color: '#64748b' }}>
-            Target: &lt; 150ms | Hard-stop .stop(0)
-          </div>
-        </div>
-
-        {/* Stale Rejections Counter */}
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.6)',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
-          borderRadius: '12px',
-          padding: '14px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Stale Rejections Dropped
-            </span>
-            <ShieldAlert size={14} color="#f43f5e" />
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 900, color: staleRejectionsCount > 0 ? '#f43f5e' : '#94a3b8' }}>
-            {staleRejectionsCount}
-          </div>
-          <div style={{ fontSize: '10px', color: '#64748b' }}>
-            Audio & text chunks from older turns
-          </div>
-        </div>
-      </div>
-
-      {/* Phase 3: TTS Streaming Diagnostic Row */}
-      <div style={{
-        background: ttsStatus === 'aborted'
-          ? 'rgba(239, 68, 68, 0.1)'
-          : ttsStatus === 'streaming'
-          ? 'rgba(168, 85, 247, 0.12)'
-          : 'rgba(15, 23, 42, 0.6)',
-        border: ttsStatus === 'aborted'
-          ? '1px solid rgba(239, 68, 68, 0.4)'
-          : ttsStatus === 'streaming'
-          ? '1px solid rgba(168, 85, 247, 0.3)'
-          : '1px solid rgba(255, 255, 255, 0.06)',
-        borderRadius: '12px',
-        padding: '14px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Volume2 size={18} color={ttsStatus === 'aborted' ? '#f87171' : ttsStatus === 'streaming' ? '#c084fc' : '#38bdf8'} />
-          <div>
-            <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>
-              TTS Audio Stream & Playback Queue
-            </div>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: 800,
-              color: ttsStatus === 'aborted' ? '#f87171' : ttsStatus === 'streaming' ? '#c084fc' : '#f8fafc'
-            }}>
-              {ttsStatus === 'streaming' ? 'STREAMING REAL AUDIO' : ttsStatus === 'aborted' ? '🛑 ABORTED MID-UTTERANCE' : ttsStatus === 'complete' ? 'PLAYBACK COMPLETE' : 'IDLE'}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>Audio Chunks: </span>
-            <strong style={{
-              fontSize: '15px',
-              color: ttsStatus === 'aborted' ? '#f87171' : '#f8fafc'
-            }}>
-              {ttsChunksCount} chunks {ttsStatus === 'aborted' ? '(FROZEN)' : ''}
-            </strong>
-          </div>
-
-          <div style={{
-            fontSize: '11px',
-            color: '#cbd5e1',
-            background: 'rgba(255,255,255,0.05)',
-            padding: '4px 10px',
-            borderRadius: '6px'
-          }}>
-            {ttsStatus === 'aborted'
-              ? '3-Way Abort Fan-Out: TTS + LLM + ASR stopped simultaneously'
-              : ttsStatus === 'streaming'
-              ? 'Streaming PCM into Phase 0 PlaybackQueue'
-              : 'Waiting for LLM response'}
-          </div>
-        </div>
-      </div>
-
-      {/* Phase 2: LLM Streaming Diagnostic Row */}
-      <div style={{
-        background: llmStatus === 'aborted'
-          ? 'rgba(239, 68, 68, 0.1)'
-          : llmStatus === 'streaming'
-          ? 'rgba(168, 85, 247, 0.12)'
-          : 'rgba(15, 23, 42, 0.6)',
-        border: llmStatus === 'aborted'
-          ? '1px solid rgba(239, 68, 68, 0.4)'
-          : llmStatus === 'streaming'
-          ? '1px solid rgba(168, 85, 247, 0.3)'
-          : '1px solid rgba(255, 255, 255, 0.06)',
-        borderRadius: '12px',
-        padding: '14px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Bot size={18} color={llmStatus === 'aborted' ? '#f87171' : llmStatus === 'streaming' ? '#c084fc' : '#38bdf8'} />
-          <div>
-            <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>
-              LLM Generation & Abort Status
-            </div>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: 800,
-              color: llmStatus === 'aborted' ? '#f87171' : llmStatus === 'streaming' ? '#c084fc' : '#f8fafc'
-            }}>
-              {llmStatus === 'streaming' ? 'STREAMING ACTIVE' : llmStatus === 'aborted' ? '🛑 ABORTED MID-GENERATION' : llmStatus === 'complete' ? 'COMMITTED' : 'IDLE'}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>Tokens Streamed: </span>
-            <strong style={{
-              fontSize: '15px',
-              color: llmStatus === 'aborted' ? '#f87171' : '#f8fafc'
-            }}>
-              {llmTokenCount} tokens {llmStatus === 'aborted' ? '(FROZEN)' : ''}
-            </strong>
-          </div>
-
-          <div style={{
-            fontSize: '11px',
-            color: '#cbd5e1',
-            background: 'rgba(255,255,255,0.05)',
-            padding: '4px 10px',
-            borderRadius: '6px'
-          }}>
-            {llmStatus === 'aborted'
-              ? 'AbortController.abort() landed • Staged slots discarded'
-              : 'Tokens stream directly into TTS synthesizer'}
-          </div>
-        </div>
-      </div>
-
-      {/* Adaptive Endpointing Row */}
-      <div style={{
-        background: endpointingInfo?.windowType === 'long' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(15, 23, 42, 0.6)',
-        border: endpointingInfo?.windowType === 'long' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(255, 255, 255, 0.06)',
-        borderRadius: '12px',
-        padding: '14px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Clock size={18} color={endpointingInfo?.windowType === 'long' ? '#fbbf24' : '#38bdf8'} />
-          <div>
-            <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase' }}>
-              Adaptive Endpointing Window
-            </div>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: endpointingInfo?.windowType === 'long' ? '#fbbf24' : '#38bdf8' }}>
-              {endpointingInfo ? `${endpointingInfo.windowType.toUpperCase()} WINDOW (${endpointingInfo.windowMs} ms)` : 'SHORT WINDOW (500 ms)'}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '600px' }}>
-          <span style={{ fontSize: '11px', color: '#94a3b8' }}>Reasoning:</span>
-          <span style={{
+            padding: '8px 18px',
             fontSize: '12px',
-            color: '#f8fafc',
-            fontWeight: 500,
-            background: 'rgba(255,255,255,0.05)',
-            padding: '4px 10px',
-            borderRadius: '6px'
-          }}>
-            {endpointingInfo?.reason || 'Clean utterance / ready for speech'}
-          </span>
-        </div>
+            cursor: 'pointer',
+            background: 'rgba(18, 35, 26, 0.6)',
+            border: '1px solid rgba(110, 231, 183, 0.2)',
+            color: '#a7f3d0',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+          }}
+        >
+          <Cpu size={14} color="#6ee7b7" />
+          <span>Diagnostics & Test Suite</span>
+          <ChevronUp size={14} color="#6ee7b7" />
+        </button>
       </div>
+    );
+  }
 
-      {/* Secondary Telemetry Strip */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '10px',
-        padding: '10px 14px',
-        background: 'rgba(15, 23, 42, 0.4)',
-        borderRadius: '10px',
-        border: '1px solid rgba(255, 255, 255, 0.04)',
-        fontSize: '11px'
-      }}>
-        <div>
-          <span style={{ color: '#64748b' }}>PCM Frames Sent: </span>
-          <strong style={{ color: '#f8fafc' }}>{framesSent.toLocaleString()}</strong>
-        </div>
-        <div>
-          <span style={{ color: '#64748b' }}>Audio Upload: </span>
-          <strong style={{ color: '#f8fafc' }}>{(bytesSent / 1024).toFixed(1)} KB</strong>
-        </div>
-        <div>
-          <span style={{ color: '#64748b' }}>Speech Prob: </span>
-          <strong style={{ color: speechProbability > 0.5 ? '#34d399' : '#94a3b8' }}>
-            {(speechProbability * 100).toFixed(0)}%
-          </strong>
-        </div>
-        <div>
-          <span style={{ color: '#64748b' }}>Barge-In Events: </span>
-          <strong style={{ color: '#38bdf8' }}>{bargeInHistory.length} recorded</strong>
-        </div>
-      </div>
-
-      {/* Live Event Log Feed */}
-      <div style={{
-        background: 'rgba(5, 10, 20, 0.7)',
-        borderRadius: '10px',
-        border: '1px solid rgba(255, 255, 255, 0.06)',
-        padding: '12px',
+  return (
+    <div
+      className="glass-card"
+      style={{
+        marginTop: '16px',
+        padding: '20px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '8px'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.5px' }}>
-            LIVE EVENT LOG (CHRONOLOGICAL)
-          </span>
-          <span style={{ fontSize: '10px', color: '#64748b' }}>
-            Showing last {logs.length} events
-          </span>
+        gap: '16px',
+        background: 'rgba(12, 24, 18, 0.85)',
+        border: '1px solid rgba(110, 231, 183, 0.2)',
+        boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.7)',
+      }}
+    >
+      {/* Top Bar with Tabs and Close Button */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid rgba(110, 231, 183, 0.1)',
+          paddingBottom: '12px',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={() => setActiveTab('tests')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              background: activeTab === 'tests' ? 'rgba(110, 231, 183, 0.18)' : 'transparent',
+              border: activeTab === 'tests' ? '1px solid rgba(110, 231, 183, 0.3)' : '1px solid transparent',
+              color: activeTab === 'tests' ? '#f0fdf4' : '#7ba691',
+              fontWeight: 600,
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Zap size={14} color="#6ee7b7" />
+            Proof Test Cases (6)
+          </button>
+
+          <button
+            onClick={() => setActiveTab('metrics')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              background: activeTab === 'metrics' ? 'rgba(110, 231, 183, 0.18)' : 'transparent',
+              border: activeTab === 'metrics' ? '1px solid rgba(110, 231, 183, 0.3)' : '1px solid transparent',
+              color: activeTab === 'metrics' ? '#f0fdf4' : '#7ba691',
+              fontWeight: 600,
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Activity size={14} color="#6ee7b7" />
+            Live Telemetry
+          </button>
+
+          <button
+            onClick={() => setActiveTab('logs')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              background: activeTab === 'logs' ? 'rgba(110, 231, 183, 0.18)' : 'transparent',
+              border: activeTab === 'logs' ? '1px solid rgba(110, 231, 183, 0.3)' : '1px solid transparent',
+              color: activeTab === 'logs' ? '#f0fdf4' : '#7ba691',
+              fontWeight: 600,
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Terminal size={14} color="#6ee7b7" />
+            Event Log ({logs.length})
+          </button>
         </div>
 
-        <div style={{
-          maxHeight: '160px',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px',
-          fontSize: '11px'
-        }}>
-          {logs.length === 0 ? (
-            <div style={{ color: '#64748b', fontStyle: 'italic', padding: '10px 0' }}>
-              No events recorded yet. Click "Start Assistant" to begin.
-            </div>
-          ) : (
-            logs.map((log) => {
-              let tagColor = '#94a3b8';
-              let badge = 'INFO';
-              if (log.type === 'barge_in') {
-                tagColor = '#f43f5e';
-                badge = 'BARGE-IN';
-              } else if (log.type === 'state') {
-                tagColor = '#38bdf8';
-                badge = 'STATE';
-              } else if (log.type === 'stale_reject') {
-                tagColor = '#f59e0b';
-                badge = 'DROP';
-              } else if (log.type === 'endpointing') {
-                tagColor = '#a855f7';
-                badge = 'ENDPOINT';
-              } else if (log.type === 'transcript') {
-                tagColor = '#10b981';
-                badge = 'ASR';
-              } else if (log.type === 'tts') {
-                tagColor = '#ec4899';
-                badge = 'TTS';
-              }
+        <button
+          onClick={onToggle}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#7ba691',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+          title="Minimize Diagnostics"
+        >
+          <X size={18} />
+        </button>
+      </div>
 
-              return (
-                <div
-                  key={log.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '8px',
-                    padding: '3px 6px',
-                    borderRadius: '4px',
-                    background: log.type === 'barge_in'
-                      ? 'rgba(244, 63, 94, 0.1)'
-                      : log.type === 'endpointing'
-                      ? 'rgba(168, 85, 247, 0.08)'
-                      : 'transparent',
-                    borderLeft: log.type === 'barge_in'
-                      ? '3px solid #f43f5e'
-                      : log.type === 'endpointing'
-                      ? '3px solid #a855f7'
-                      : 'none'
-                  }}
-                >
-                  <span style={{ color: '#64748b', minWidth: '75px' }}>{log.timestamp}</span>
-                  <span style={{
-                    fontSize: '9px',
-                    padding: '1px 5px',
-                    borderRadius: '4px',
-                    background: 'rgba(255,255,255,0.06)',
-                    color: tagColor,
-                    fontWeight: 700,
-                    minWidth: '65px',
-                    textAlign: 'center'
-                  }}>
-                    {badge}
-                  </span>
-                  <span style={{ color: '#f1f5f9', wordBreak: 'break-word', flex: 1 }}>{log.message}</span>
+      {/* Tab 1: Proof Suite Test Cases */}
+      {activeTab === 'tests' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ fontSize: '12px', color: '#a7c4b5' }}>
+            Run canonical end-to-end test scenarios directly over the WebSocket pipeline:
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '10px',
+            }}
+          >
+            <button
+              onClick={onRunCase1CleanTurn}
+              disabled={!wsConnected}
+              style={{
+                padding: '12px',
+                borderRadius: '10px',
+                background: 'rgba(110, 231, 183, 0.08)',
+                border: '1px solid rgba(110, 231, 183, 0.25)',
+                color: '#f0fdf4',
+                cursor: wsConnected ? 'pointer' : 'not-allowed',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+              }}
+            >
+              <MessageSquare size={16} color="#6ee7b7" style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '12px' }}>1. Clean Turn</div>
+                <div style={{ fontSize: '10px', color: '#7ba691', marginTop: '2px' }}>
+                  ASR ➔ Short Window ➔ LLM ➔ Full TTS
                 </div>
-              );
-            })
+              </div>
+            </button>
+
+            <button
+              onClick={onRunCase2MidTTSBargeIn}
+              disabled={!wsConnected}
+              style={{
+                padding: '12px',
+                borderRadius: '10px',
+                background: 'rgba(252, 165, 165, 0.08)',
+                border: '1px solid rgba(252, 165, 165, 0.25)',
+                color: '#f0fdf4',
+                cursor: wsConnected ? 'pointer' : 'not-allowed',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+              }}
+            >
+              <Flame size={16} color="#fca5a5" style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '12px' }}>2. Mid-TTS Barge-In</div>
+                <div style={{ fontSize: '10px', color: '#fca5a5', marginTop: '2px' }}>
+                  &lt;150ms hard-stop, aborts ASR/LLM/TTS
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={onRunCase3TrailingOff}
+              disabled={!wsConnected}
+              style={{
+                padding: '12px',
+                borderRadius: '10px',
+                background: 'rgba(253, 230, 138, 0.08)',
+                border: '1px solid rgba(253, 230, 138, 0.25)',
+                color: '#f0fdf4',
+                cursor: wsConnected ? 'pointer' : 'not-allowed',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+              }}
+            >
+              <Clock size={16} color="#fde68a" style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '12px' }}>3. Trailing Off ("...um...")</div>
+                <div style={{ fontSize: '10px', color: '#fde68a', marginTop: '2px' }}>
+                  Long window (1800ms) adaptive hold
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={onRunCase4SlotCorrection}
+              disabled={!wsConnected}
+              style={{
+                padding: '12px',
+                borderRadius: '10px',
+                background: 'rgba(167, 243, 208, 0.08)',
+                border: '1px solid rgba(167, 243, 208, 0.25)',
+                color: '#f0fdf4',
+                cursor: wsConnected ? 'pointer' : 'not-allowed',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+              }}
+            >
+              <RefreshCw size={16} color="#a7f3d0" style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '12px' }}>4. Slot Correction</div>
+                <div style={{ fontSize: '10px', color: '#a7f3d0', marginTop: '2px' }}>
+                  "Make that 7" mutates partySize cleanly
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={onRunCase5RapidDoubleInterrupt}
+              disabled={!wsConnected}
+              style={{
+                padding: '12px',
+                borderRadius: '10px',
+                background: 'rgba(110, 231, 183, 0.08)',
+                border: '1px solid rgba(110, 231, 183, 0.25)',
+                color: '#f0fdf4',
+                cursor: wsConnected ? 'pointer' : 'not-allowed',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+              }}
+            >
+              <Zap size={16} color="#6ee7b7" style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '12px' }}>5. Rapid Double Interrupt</div>
+                <div style={{ fontSize: '10px', color: '#6ee7b7', marginTop: '2px' }}>
+                  Two interrupts in 350ms, monotonic turns
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={onRunCase6TailEndInterrupt}
+              disabled={!wsConnected}
+              style={{
+                padding: '12px',
+                borderRadius: '10px',
+                background: 'rgba(52, 211, 153, 0.08)',
+                border: '1px solid rgba(52, 211, 153, 0.25)',
+                color: '#f0fdf4',
+                cursor: wsConnected ? 'pointer' : 'not-allowed',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+              }}
+            >
+              <Sparkles size={16} color="#34d399" style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '12px' }}>6. Tail-End Interrupt</div>
+                <div style={{ fontSize: '10px', color: '#34d399', marginTop: '2px' }}>
+                  Halts at final chunk with zero race conditions
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+            <button
+              onClick={onRunRapidInterruptTest}
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: '8px',
+                background: 'rgba(110, 231, 183, 0.12)',
+                border: '1px solid rgba(110, 231, 183, 0.3)',
+                color: '#a7f3d0',
+                fontWeight: 600,
+                fontSize: '11px',
+                cursor: 'pointer',
+              }}
+            >
+              ⚡ Run 5x Rapid Barge-In Stress Test
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: Live Telemetry */}
+      {activeTab === 'metrics' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Provider Badges */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <span
+              className="glass-pill"
+              style={{
+                padding: '4px 10px',
+                fontSize: '11px',
+                background: hasCartesiaKey ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                color: hasCartesiaKey ? '#6ee7b7' : '#5e8271',
+              }}
+            >
+              TTS: {hasCartesiaKey ? 'CARTESIA SONIC' : 'SYNTHESIZER'} ({ttsStatus.toUpperCase()}, {ttsChunksCount} chunks)
+            </span>
+
+            <span
+              className="glass-pill"
+              style={{
+                padding: '4px 10px',
+                fontSize: '11px',
+                background: hasOpenAIKey ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                color: hasOpenAIKey ? '#6ee7b7' : '#5e8271',
+              }}
+            >
+              LLM: {hasOpenAIKey ? 'GROQ / OPENAI' : 'DIALOG ENGINE'} ({llmStatus.toUpperCase()}, {llmTokenCount} tokens)
+            </span>
+
+            <span
+              className="glass-pill"
+              style={{
+                padding: '4px 10px',
+                fontSize: '11px',
+                background: hasDeepgramKey ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                color: hasDeepgramKey ? '#6ee7b7' : '#5e8271',
+              }}
+            >
+              ASR: {hasDeepgramKey ? 'DEEPGRAM NOVA-2' : 'OFFLINE'}
+            </span>
+
+            <span
+              className="glass-pill"
+              style={{
+                padding: '4px 10px',
+                fontSize: '11px',
+                background: 'rgba(52, 211, 153, 0.15)',
+                color: '#6ee7b7',
+              }}
+            >
+              VAD: {vadEngine.toUpperCase()} ONNX
+            </span>
+          </div>
+
+          {/* Metric Grid */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: '10px',
+            }}
+          >
+            <div style={{ padding: '10px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(110, 231, 183, 0.08)' }}>
+              <div style={{ fontSize: '10px', color: '#5e8271' }}>TURN / STATE</div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#f0fdf4' }}>
+                Turn #{turnId} • {state}
+              </div>
+            </div>
+
+            <div style={{ padding: '10px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(110, 231, 183, 0.08)' }}>
+              <div style={{ fontSize: '10px', color: '#5e8271' }}>LAST BARGE-IN</div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: lastBargeInLatency && lastBargeInLatency <= 150 ? '#6ee7b7' : '#fde68a' }}>
+                {lastBargeInLatency ? `${lastBargeInLatency}ms` : '—'} ({bargeInHistory.length} total)
+              </div>
+            </div>
+
+            <div style={{ padding: '10px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(110, 231, 183, 0.08)' }}>
+              <div style={{ fontSize: '10px', color: '#5e8271' }}>SPEECH PROB / VAD</div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#f0fdf4' }}>
+                {(speechProbability * 100).toFixed(0)}%
+              </div>
+            </div>
+
+            <div style={{ padding: '10px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(110, 231, 183, 0.08)' }}>
+              <div style={{ fontSize: '10px', color: '#5e8271' }}>PCM AUDIO SENT</div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#f0fdf4' }}>
+                {framesSent.toLocaleString()} frames ({(bytesSent / 1024).toFixed(0)} KB)
+              </div>
+            </div>
+
+            <div style={{ padding: '10px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(110, 231, 183, 0.08)' }}>
+              <div style={{ fontSize: '10px', color: '#5e8271' }}>AUDIO QUEUE NODES</div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#f0fdf4' }}>
+                {activeNodesCount} active
+              </div>
+            </div>
+
+            <div style={{ padding: '10px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(110, 231, 183, 0.08)' }}>
+              <div style={{ fontSize: '10px', color: '#5e8271' }}>STALE DROPS</div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#f0fdf4' }}>
+                {staleRejectionsCount}
+              </div>
+            </div>
+
+            {endpointingInfo && (
+              <div style={{ padding: '10px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(110, 231, 183, 0.08)' }}>
+                <div style={{ fontSize: '10px', color: '#5e8271' }}>ENDPOINTING</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#a7f3d0' }}>
+                  {endpointingInfo.windowType.toUpperCase()} ({endpointingInfo.windowMs}ms)
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: Event Log */}
+      {activeTab === 'logs' && (
+        <div
+          style={{
+            maxHeight: '220px',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            fontFamily: 'monospace',
+            fontSize: '11px',
+            paddingRight: '6px',
+          }}
+        >
+          {logs.length === 0 ? (
+            <div style={{ color: '#5e8271', padding: '10px 0' }}>No event logs recorded yet.</div>
+          ) : (
+            logs.slice(-40).map((log, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  color: log.type === 'barge_in'
+                    ? '#fca5a5'
+                    : log.type === 'warn'
+                    ? '#fde68a'
+                    : '#a7c4b5',
+                }}
+              >
+                <span style={{ color: '#5e8271', flexShrink: 0 }}>{log.timestamp}</span>
+                <span>{log.message}</span>
+              </div>
+            ))
           )}
         </div>
-      </div>
-    </aside>
+      )}
+    </div>
   );
 };

@@ -1,5 +1,5 @@
-import React from 'react';
-import { MessageSquare, Clock, Zap, CheckCircle, Bot, AlertTriangle } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { MessageSquare, Clock, Bot, User, AlertCircle } from 'lucide-react';
 
 export interface TranscriptItem {
   id: string;
@@ -37,217 +37,325 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({
   llmStreamingText,
   isLLMGenerating,
 }) => {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [transcripts, currentPartial, llmStreamingText]);
+
   return (
-    <div style={{
-      background: 'rgba(15, 23, 42, 0.7)',
-      border: '1px solid rgba(255, 255, 255, 0.08)',
-      borderRadius: '16px',
-      padding: '20px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '14px',
-      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
-      minHeight: '300px',
-      justifyContent: 'space-between'
-    }}>
-      {/* Header & Status Indicator */}
-      <div style={{
+    <div
+      className="glass-card"
+      style={{
+        padding: '22px',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-        paddingBottom: '10px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <MessageSquare size={16} color="#38bdf8" />
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#e2e8f0', letterSpacing: '0.5px' }}>
-            CONVERSATION & STREAMING DIALOGUE
-          </span>
-          <span style={{
-            fontSize: '10px',
-            padding: '2px 7px',
-            borderRadius: '4px',
-            background: 'rgba(56, 189, 248, 0.1)',
-            color: '#38bdf8',
-            fontWeight: 700
-          }}>
-            TURN #{currentTurnId}
+        flexDirection: 'column',
+        gap: '16px',
+        minHeight: '340px',
+        maxHeight: '440px',
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid rgba(110, 231, 183, 0.1)',
+          paddingBottom: '14px',
+          flexWrap: 'wrap',
+          gap: '10px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div
+            style={{
+              width: '30px',
+              height: '30px',
+              borderRadius: '8px',
+              background: 'rgba(110, 231, 183, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#6ee7b7',
+            }}
+          >
+            <MessageSquare size={16} />
+          </div>
+          <div>
+            <span
+              style={{
+                fontSize: '13px',
+                fontWeight: 700,
+                color: '#f0fdf4',
+                letterSpacing: '0.6px',
+                textTransform: 'uppercase',
+              }}
+            >
+              Live Dialogue
+            </span>
+          </div>
+          <span
+            className="glass-pill"
+            style={{
+              fontSize: '10px',
+              padding: '2px 8px',
+              fontWeight: 700,
+            }}
+          >
+            Turn #{currentTurnId}
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Dynamic Activity Badges */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {isUserSpeaking && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: '#10b981',
-                boxShadow: '0 0 8px #10b981',
-                animation: 'pulse 1.5s infinite'
-              }} />
-              <span style={{ fontSize: '11px', color: '#34d399', fontWeight: 600 }}>USER SPEAKING</span>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '3px 10px',
+                borderRadius: '999px',
+                background: 'rgba(110, 231, 183, 0.15)',
+                border: '1px solid rgba(110, 231, 183, 0.3)',
+              }}
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: '#6ee7b7',
+                  boxShadow: '0 0 8px #6ee7b7',
+                }}
+                className="animate-pulse-subtle"
+              />
+              <span style={{ fontSize: '11px', color: '#a7f3d0', fontWeight: 600 }}>Speaking</span>
             </div>
           )}
 
           {isLLMGenerating && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: '#a855f7',
-                boxShadow: '0 0 8px #a855f7',
-                animation: 'pulse 1.5s infinite'
-              }} />
-              <span style={{ fontSize: '11px', color: '#c084fc', fontWeight: 600 }}>LLM STREAMING</span>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '3px 10px',
+                borderRadius: '999px',
+                background: 'rgba(52, 211, 153, 0.15)',
+                border: '1px solid rgba(52, 211, 153, 0.3)',
+              }}
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: '#34d399',
+                  boxShadow: '0 0 8px #34d399',
+                }}
+                className="animate-pulse-subtle"
+              />
+              <span style={{ fontSize: '11px', color: '#6ee7b7', fontWeight: 600 }}>Thinking</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Transcript & Response Area */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        maxHeight: '220px',
-        overflowY: 'auto',
-        paddingRight: '4px'
-      }}>
+      {/* Messages Scroll Area */}
+      <div
+        ref={scrollRef}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          overflowY: 'auto',
+          paddingRight: '6px',
+        }}
+      >
         {transcripts.length === 0 && !currentPartial && !llmStreamingText ? (
-          <div style={{ color: '#64748b', fontSize: '13px', fontStyle: 'italic', padding: '24px 0', textAlign: 'center' }}>
-            Speak into your microphone or click a test button to start the reservation dialogue.
+          <div
+            style={{
+              margin: 'auto',
+              color: '#5e8271',
+              fontSize: '13px',
+              textAlign: 'center',
+              padding: '30px 20px',
+              maxWidth: '360px',
+            }}
+          >
+            Press <strong style={{ color: '#a7f3d0' }}>Start Voice Assistant</strong> and speak freely. Interrupt the assistant at any time to test real-time barge-in.
           </div>
         ) : (
-          transcripts.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                background: item.speaker === 'user' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(168, 85, 247, 0.08)',
-                border: item.wasAborted
-                  ? '1px dashed rgba(245, 158, 11, 0.4)'
-                  : item.speaker === 'user'
-                  ? '1px solid rgba(255, 255, 255, 0.04)'
-                  : '1px solid rgba(168, 85, 247, 0.2)'
-              }}
-            >
-              {item.speaker === 'user' ? (
-                <CheckCircle size={14} color="#10b981" style={{ marginTop: '3px', flexShrink: 0 }} />
-              ) : item.wasAborted ? (
-                <AlertTriangle size={14} color="#fbbf24" style={{ marginTop: '3px', flexShrink: 0 }} />
-              ) : (
-                <Bot size={14} color="#c084fc" style={{ marginTop: '3px', flexShrink: 0 }} />
-              )}
-
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: '13px',
-                  color: item.wasAborted ? '#fbbf24' : '#f8fafc',
-                  fontWeight: item.speaker === 'user' ? 500 : 400
-                }}>
-                  {item.speaker === 'user' ? `"${item.text}"` : item.text}
+          transcripts.map((item) => {
+            const isUser = item.speaker === 'user';
+            return (
+              <div
+                key={item.id}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignSelf: isUser ? 'flex-end' : 'flex-start',
+                  maxWidth: '85%',
+                  gap: '4px',
+                }}
+              >
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    background: isUser
+                      ? 'rgba(110, 231, 183, 0.12)'
+                      : item.wasAborted
+                      ? 'rgba(253, 230, 138, 0.08)'
+                      : 'rgba(255, 255, 255, 0.04)',
+                    border: isUser
+                      ? '1px solid rgba(110, 231, 183, 0.25)'
+                      : item.wasAborted
+                      ? '1px solid rgba(253, 230, 138, 0.25)'
+                      : '1px solid rgba(255, 255, 255, 0.06)',
+                    color: item.wasAborted ? '#fef3c7' : '#f0fdf4',
+                    fontSize: '14px',
+                    lineHeight: '1.5',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                    {isUser ? (
+                      <User size={12} color="#a7f3d0" />
+                    ) : item.wasAborted ? (
+                      <AlertCircle size={12} color="#fde68a" />
+                    ) : (
+                      <Bot size={12} color="#6ee7b7" />
+                    )}
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        color: isUser ? '#a7c4b5' : '#7ba691',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      {isUser ? 'You' : 'Assistant'}
+                    </span>
+                    {item.wasAborted && (
+                      <span
+                        style={{
+                          fontSize: '9px',
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          background: 'rgba(253, 230, 138, 0.15)',
+                          color: '#fde68a',
+                          fontWeight: 700,
+                        }}
+                      >
+                        INTERRUPTED
+                      </span>
+                    )}
+                  </div>
+                  <div>{item.text}</div>
                 </div>
-                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>{item.speaker === 'user' ? 'User' : 'Assistant'} • Turn #{item.turnId}</span>
-                  {item.wasAborted && (
-                    <span style={{ color: '#fbbf24', fontWeight: 700 }}>[ABORTED MID-GENERATION]</span>
-                  )}
-                  <span>{item.timestamp}</span>
+                <div
+                  style={{
+                    fontSize: '10px',
+                    color: '#5e8271',
+                    alignSelf: isUser ? 'flex-end' : 'flex-start',
+                    padding: '0 4px',
+                  }}
+                >
+                  {item.timestamp}
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
 
-        {/* In-flight Interim User Partial */}
+        {/* Interim In-flight User Speech */}
         {currentPartial && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '8px',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            background: 'rgba(56, 189, 248, 0.08)',
-            border: '1px dashed rgba(56, 189, 248, 0.4)',
-            animation: 'pulse 2s infinite'
-          }}>
-            <Zap size={14} color="#38bdf8" style={{ marginTop: '2px', flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '13px', color: '#7dd3fc', fontStyle: 'italic' }}>
-                "{currentPartial}"
-              </div>
-              <div style={{ fontSize: '10px', color: '#38bdf8', marginTop: '2px' }}>
-                streaming user speech...
-              </div>
+          <div
+            style={{
+              alignSelf: 'flex-end',
+              maxWidth: '85%',
+              padding: '10px 14px',
+              borderRadius: '16px 16px 4px 16px',
+              background: 'rgba(110, 231, 183, 0.06)',
+              border: '1px dashed rgba(110, 231, 183, 0.3)',
+              color: '#a7f3d0',
+              fontStyle: 'italic',
+              fontSize: '13px',
+            }}
+          >
+            <div style={{ fontSize: '10px', color: '#6ee7b7', fontWeight: 600, marginBottom: '2px' }}>
+              Transcribing live...
             </div>
+            "{currentPartial}"
           </div>
         )}
 
-        {/* In-flight Streaming Assistant Response */}
+        {/* Streaming In-flight Assistant Tokens */}
         {llmStreamingText && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '8px',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            background: 'rgba(168, 85, 247, 0.12)',
-            border: '1px dashed rgba(168, 85, 247, 0.5)'
-          }}>
-            <Bot size={14} color="#c084fc" style={{ marginTop: '3px', flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '13px', color: '#e9d5ff' }}>
-                {llmStreamingText}
-                <span style={{ display: 'inline-block', width: '6px', height: '14px', background: '#c084fc', marginLeft: '4px', verticalAlign: 'middle', animation: 'pulse 0.8s infinite' }} />
-              </div>
-              <div style={{ fontSize: '10px', color: '#c084fc', marginTop: '2px' }}>
-                LLM streaming tokens live (cancellable via barge-in)...
-              </div>
+          <div
+            style={{
+              alignSelf: 'flex-start',
+              maxWidth: '85%',
+              padding: '12px 16px',
+              borderRadius: '16px 16px 16px 4px',
+              background: 'rgba(52, 211, 153, 0.08)',
+              border: '1px dashed rgba(52, 211, 153, 0.3)',
+              color: '#ecfdf5',
+              fontSize: '14px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <Bot size={12} color="#34d399" />
+              <span style={{ fontSize: '10px', color: '#6ee7b7', fontWeight: 600 }}>Streaming Response</span>
+            </div>
+            <div>
+              {llmStreamingText}
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '6px',
+                  height: '14px',
+                  background: '#6ee7b7',
+                  marginLeft: '4px',
+                  verticalAlign: 'middle',
+                }}
+                className="animate-pulse-subtle"
+              />
             </div>
           </div>
         )}
       </div>
 
-      {/* Adaptive Endpointing Active Window Bar */}
-      <div style={{
-        marginTop: 'auto',
-        padding: '10px 14px',
-        borderRadius: '8px',
-        background: endpointingInfo?.windowType === 'long' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(56, 189, 248, 0.08)',
-        border: endpointingInfo?.windowType === 'long' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(56, 189, 248, 0.2)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        fontSize: '11px',
-        gap: '8px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Clock size={14} color={endpointingInfo?.windowType === 'long' ? '#fbbf24' : '#38bdf8'} />
-          <span style={{ color: '#94a3b8' }}>Endpoint Window:</span>
-          <span style={{
-            fontWeight: 800,
-            color: endpointingInfo?.windowType === 'long' ? '#fbbf24' : '#38bdf8',
-            textTransform: 'uppercase'
-          }}>
-            {endpointingInfo ? `${endpointingInfo.windowType} (${endpointingInfo.windowMs}ms)` : 'DEFAULT (500ms)'}
+      {/* Adaptive Endpointing Window Pill */}
+      <div
+        style={{
+          marginTop: 'auto',
+          padding: '8px 14px',
+          borderRadius: '10px',
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1px solid rgba(110, 231, 183, 0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '11px',
+          color: '#7ba691',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Clock size={13} color="#6ee7b7" />
+          <span>Endpoint Window:</span>
+          <span style={{ color: '#a7f3d0', fontWeight: 600 }}>
+            {endpointingInfo ? `${endpointingInfo.windowType.toUpperCase()} (${endpointingInfo.windowMs}ms)` : 'ADAPTIVE'}
           </span>
         </div>
-
-        <div style={{
-          color: '#cbd5e1',
-          fontSize: '11px',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          maxWidth: '300px'
-        }}>
-          {endpointingInfo?.reason || 'Monitoring user utterance completeness...'}
+        <div style={{ fontSize: '10px', color: '#5e8271', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {endpointingInfo?.reason || 'Speech boundary detection active'}
         </div>
       </div>
     </div>

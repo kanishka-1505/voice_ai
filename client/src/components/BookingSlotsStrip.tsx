@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Clock, Users, User, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, Users, User, CheckCircle2, Sparkles } from 'lucide-react';
 
 export interface BookingSlots {
   date: string | null;
@@ -22,43 +22,68 @@ export const BookingSlotsStrip: React.FC<BookingSlotsStripProps> = ({
   const filledCount = Object.values(slots).filter(Boolean).length;
 
   const renderSlotCard = (label: string, value: string | number | null, icon: React.ReactNode) => {
-    const isFilled = value !== null && value !== undefined;
+    const isFilled = value !== null && value !== undefined && value !== '';
 
     return (
-      <div style={{
-        flex: 1,
-        minWidth: '150px',
-        padding: '12px 14px',
-        borderRadius: '10px',
-        background: isFilled ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-        border: isFilled ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        transition: 'all 0.3s ease'
-      }}>
-        <div style={{
-          width: '32px',
-          height: '32px',
-          borderRadius: '8px',
-          background: isFilled ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+      <div
+        style={{
+          padding: '14px 16px',
+          borderRadius: '14px',
+          background: isFilled
+            ? 'rgba(110, 231, 183, 0.08)'
+            : 'rgba(255, 255, 255, 0.02)',
+          border: isFilled
+            ? '1px solid rgba(110, 231, 183, 0.3)'
+            : '1px solid rgba(110, 231, 183, 0.07)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          color: isFilled ? '#38bdf8' : '#64748b'
-        }}>
+          gap: '14px',
+          transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          boxShadow: isFilled ? '0 4px 20px -5px rgba(52, 211, 153, 0.12)' : 'none',
+        }}
+      >
+        <div
+          style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '10px',
+            background: isFilled
+              ? 'rgba(110, 231, 183, 0.18)'
+              : 'rgba(255, 255, 255, 0.03)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isFilled ? '#6ee7b7' : '#5e8271',
+            transition: 'all 0.3s ease',
+            flexShrink: 0,
+          }}
+        >
           {icon}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <span
+            style={{
+              fontSize: '11px',
+              color: isFilled ? '#a7c4b5' : '#5e8271',
+              textTransform: 'uppercase',
+              letterSpacing: '0.8px',
+              fontWeight: 600,
+            }}
+          >
             {label}
           </span>
-          <span style={{
-            fontSize: '14px',
-            fontWeight: 700,
-            color: isFilled ? '#f8fafc' : '#475569'
-          }}>
-            {isFilled ? (typeof value === 'number' ? `${value} Guests` : value) : '—'}
+          <span
+            style={{
+              fontSize: '15px',
+              fontWeight: 600,
+              color: isFilled ? '#f0fdf4' : '#3d584b',
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              overflow: 'hidden',
+              marginTop: '1px',
+            }}
+          >
+            {isFilled ? (typeof value === 'number' ? `${value} Guests` : value) : 'Pending...'}
           </span>
         </div>
       </div>
@@ -66,61 +91,96 @@ export const BookingSlotsStrip: React.FC<BookingSlotsStripProps> = ({
   };
 
   return (
-    <div style={{
-      background: 'rgba(15, 23, 42, 0.7)',
-      border: isComplete ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
-      borderRadius: '16px',
-      padding: '16px 20px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '12px',
-      boxShadow: isComplete ? '0 0 20px rgba(16, 185, 129, 0.15)' : 'none',
-      transition: 'all 0.3s ease'
-    }}>
-      <div style={{
+    <div
+      className="glass-card"
+      style={{
+        padding: '22px',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '8px'
-      }}>
+        flexDirection: 'column',
+        gap: '16px',
+        border: isComplete
+          ? '1px solid rgba(110, 231, 183, 0.4)'
+          : '1px solid rgba(110, 231, 183, 0.12)',
+        boxShadow: isComplete
+          ? '0 12px 36px -8px rgba(16, 185, 129, 0.2)'
+          : '0 8px 30px -10px rgba(0, 0, 0, 0.5)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.5px' }}>
-            BOOKING STATE (SESSION-SCOPED)
+          <div
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: '#6ee7b7',
+              boxShadow: '0 0 10px #6ee7b7',
+            }}
+          />
+          <span
+            style={{
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#f0fdf4',
+              letterSpacing: '0.6px',
+              textTransform: 'uppercase',
+            }}
+          >
+            Reservation Details
           </span>
-          <span style={{ fontSize: '10px', color: '#64748b' }}>
-            Persists across turns & interruptions {turnId ? `• Turn #${turnId}` : ''}
-          </span>
+          {turnId && (
+            <span style={{ fontSize: '11px', color: '#5e8271' }}>• Turn #{turnId}</span>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{
-            fontSize: '11px',
-            padding: '3px 10px',
-            borderRadius: '999px',
-            background: isComplete ? 'rgba(16, 185, 129, 0.15)' : 'rgba(56, 189, 248, 0.12)',
-            color: isComplete ? '#34d399' : '#38bdf8',
-            border: '1px solid currentColor',
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            {isComplete ? <CheckCircle2 size={12} /> : null}
-            {isComplete ? 'RESERVATION COMPLETE (4/4)' : `IN PROGRESS (${filledCount}/4 SLOTS)`}
+          <span
+            className="glass-pill"
+            style={{
+              fontSize: '11px',
+              padding: '4px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: isComplete ? 'rgba(52, 211, 153, 0.18)' : 'rgba(110, 231, 183, 0.08)',
+              color: isComplete ? '#a7f3d0' : '#6ee7b7',
+              border: isComplete ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(110, 231, 183, 0.2)',
+            }}
+          >
+            {isComplete ? (
+              <>
+                <CheckCircle2 size={13} color="#a7f3d0" />
+                Confirmed (4/4)
+              </>
+            ) : (
+              <>
+                <Sparkles size={12} color="#6ee7b7" />
+                {filledCount} of 4 Confirmed
+              </>
+            )}
           </span>
         </div>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: '10px'
-      }}>
-        {renderSlotCard('Date', slots.date, <Calendar size={16} />)}
-        {renderSlotCard('Time', slots.time, <Clock size={16} />)}
-        {renderSlotCard('Party Size', slots.partySize, <Users size={16} />)}
-        {renderSlotCard('Name', slots.name, <User size={16} />)}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: '12px',
+        }}
+      >
+        {renderSlotCard('Date', slots.date, <Calendar size={18} />)}
+        {renderSlotCard('Time', slots.time, <Clock size={18} />)}
+        {renderSlotCard('Party Size', slots.partySize, <Users size={18} />)}
+        {renderSlotCard('Guest Name', slots.name, <User size={18} />)}
       </div>
     </div>
   );
