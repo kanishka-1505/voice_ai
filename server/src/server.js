@@ -321,8 +321,8 @@ wss.on('connection', (ws, req) => {
     clientId,
     turnId: activeTurnId,
     hasDeepgramKey: Boolean(DEEPGRAM_API_KEY),
-    hasOpenAIKey: Boolean(OPENAI_API_KEY),
-    hasCartesiaKey: Boolean(CARTESIA_API_KEY),
+    hasOpenAIKey: Boolean(OPENAI_API_KEY || GROQ_API_KEY),
+    hasCartesiaKey: Boolean(CARTESIA_API_KEY || ELEVENLABS_API_KEY),
     slots: bookingSession.getSlots(),
     message: 'Phase 3 Full End-to-End Loop Active'
   }));
