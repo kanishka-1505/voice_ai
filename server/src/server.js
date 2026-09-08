@@ -67,6 +67,7 @@ wss.on('connection', (ws, req) => {
   let pcmFramesCount = 0;
   let totalBytesReceived = 0;
   let lastLogTime = Date.now();
+  let conversationHistory = [];
 
   const bookingSession = new BookingSession(clientId);
 
@@ -199,6 +200,7 @@ wss.on('connection', (ws, req) => {
 
     streamLLMResponse({
       userTranscript: transcript,
+      conversationHistory,
       bookingSession,
       turnId: turn,
       signal: abortController.signal,
@@ -219,7 +221,11 @@ wss.on('connection', (ws, req) => {
         if (turn !== activeTurnId || abortController.signal.aborted) return;
         activeLLMAbortController = null;
 
-        console.log(`[LLM:Turn #${turn}] Complete. Current Slots:`, committedSlots);
+        // Commit turn to multi-turn conversation memory
+        conversationHistory.push({ role: 'user', content: transcript });
+        conversationHistory.push({ role: 'assistant', content: fullReply });
+
+        console.log(`[LLM:Turn #${turn}] Complete. History length: ${conversationHistory.length}. Slots:`, committedSlots);
 
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({
@@ -454,7 +460,8 @@ wss.on('connection', (ws, req) => {
 
         case 'reset_booking': {
           bookingSession.reset();
-          console.log(`[Booking] Reset slots for Client #${clientId}`);
+          conversationHistory = [];
+          console.log(`[Booking] Reset slots and conversation history for Client #${clientId}`);
           ws.send(JSON.stringify({
             type: 'slots_updated',
             turnId: activeTurnId,
